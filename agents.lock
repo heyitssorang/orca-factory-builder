@@ -1,0 +1,198 @@
+{
+  "version": 1,
+  "key": [
+    "install_name"
+  ],
+  "rows": [
+    {
+      "install_name": "spec-writer-p7",
+      "pack": "p7",
+      "role": "spec",
+      "mode": "designer",
+      "model": "claude-sonnet-5-5",
+      "tools": [
+        "Read",
+        "Glob",
+        "Grep",
+        "Write"
+      ],
+      "skills": [],
+      "source": "in-house"
+    },
+    {
+      "install_name": "builder-p7",
+      "pack": "p7",
+      "role": "build",
+      "mode": "writer",
+      "model": "claude-sonnet-5-5",
+      "tools": [
+        "Read",
+        "Glob",
+        "Grep",
+        "Write",
+        "Edit",
+        "Bash"
+      ],
+      "skills": [],
+      "source": "in-house"
+    },
+    {
+      "install_name": "reviewer-security-p7",
+      "pack": "p7",
+      "role": "review-security",
+      "mode": "read-only",
+      "model": "claude-opus-5-5",
+      "tools": [
+        "Read",
+        "Glob",
+        "Grep"
+      ],
+      "skills": [
+        "differential-review"
+      ],
+      "source": "in-house"
+    },
+    {
+      "install_name": "reviewer-code-p7",
+      "pack": "p7",
+      "role": "review-code",
+      "mode": "runner",
+      "model": "claude-opus-5-5",
+      "tools": [
+        "Read",
+        "Glob",
+        "Grep",
+        "Bash"
+      ],
+      "skills": [],
+      "source": "in-house"
+    },
+    {
+      "install_name": "reviewer-ux-p7",
+      "pack": "p7",
+      "role": "review-ux",
+      "mode": "mcp-read-only",
+      "model": "claude-opus-5-5",
+      "tools": [
+        "Read",
+        "Glob",
+        "Grep",
+        "mcp__chrome-devtools__navigate_page",
+        "mcp__chrome-devtools__new_page",
+        "mcp__chrome-devtools__list_pages",
+        "mcp__chrome-devtools__select_page",
+        "mcp__chrome-devtools__take_snapshot",
+        "mcp__chrome-devtools__wait_for",
+        "mcp__chrome-devtools__list_console_messages",
+        "mcp__chrome-devtools__list_network_requests",
+        "mcp__chrome-devtools__resize_page",
+        "mcp__chrome-devtools__emulate",
+        "mcp__chrome-devtools__click",
+        "mcp__chrome-devtools__hover",
+        "mcp__chrome-devtools__press_key"
+      ],
+      "skills": [],
+      "source": "in-house"
+    },
+    {
+      "install_name": "reviewer-ui-p7",
+      "pack": "p7",
+      "role": "review-ui",
+      "mode": "mcp-read-only",
+      "model": "claude-opus-5-5",
+      "tools": [
+        "Read",
+        "Glob",
+        "Grep",
+        "mcp__chrome-devtools__navigate_page",
+        "mcp__chrome-devtools__new_page",
+        "mcp__chrome-devtools__list_pages",
+        "mcp__chrome-devtools__select_page",
+        "mcp__chrome-devtools__take_snapshot",
+        "mcp__chrome-devtools__wait_for",
+        "mcp__chrome-devtools__list_console_messages",
+        "mcp__chrome-devtools__list_network_requests",
+        "mcp__chrome-devtools__resize_page",
+        "mcp__chrome-devtools__emulate",
+        "mcp__chrome-devtools__click",
+        "mcp__chrome-devtools__hover",
+        "mcp__chrome-devtools__press_key",
+        "mcp__chrome-devtools__take_screenshot"
+      ],
+      "skills": [],
+      "source": "in-house"
+    },
+    {
+      "install_name": "browser-verifier-p7",
+      "pack": "p7",
+      "role": "verify-browser",
+      "mode": "mcp-read-only",
+      "model": "claude-sonnet-5-5",
+      "tools": [
+        "Read",
+        "Glob",
+        "Grep",
+        "mcp__chrome-devtools__navigate_page",
+        "mcp__chrome-devtools__new_page",
+        "mcp__chrome-devtools__list_pages",
+        "mcp__chrome-devtools__select_page",
+        "mcp__chrome-devtools__take_snapshot",
+        "mcp__chrome-devtools__wait_for",
+        "mcp__chrome-devtools__list_console_messages",
+        "mcp__chrome-devtools__list_network_requests",
+        "mcp__chrome-devtools__resize_page",
+        "mcp__chrome-devtools__emulate",
+        "mcp__chrome-devtools__click",
+        "mcp__chrome-devtools__hover",
+        "mcp__chrome-devtools__press_key",
+        "mcp__chrome-devtools__take_screenshot"
+      ],
+      "skills": [],
+      "source": "in-house"
+    },
+    {
+      "install_name": "risk-flagger-p7",
+      "pack": "p7",
+      "role": "risk",
+      "mode": "read-only",
+      "model": "claude-opus-5-5",
+      "tools": [
+        "Read",
+        "Glob",
+        "Grep"
+      ],
+      "skills": [],
+      "source": "in-house"
+    },
+    {
+      "install_name": "scout-p7",
+      "role": "scout",
+      "model": "claude-haiku-5-5",
+      "pack": "p7",
+      "mode": "designer",
+      "tools": [
+        "Read",
+        "Glob",
+        "Grep",
+        "Write"
+      ],
+      "skills": [],
+      "source": "in-house"
+    },
+    {
+      "install_name": "planner-p7",
+      "role": "plan",
+      "model": "claude-opus-5-5",
+      "pack": "p7",
+      "mode": "designer",
+      "tools": [
+        "Read",
+        "Glob",
+        "Grep",
+        "Write"
+      ],
+      "skills": [],
+      "source": "in-house"
+    }
+  ]
+}

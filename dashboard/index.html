@@ -1,0 +1,673 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Factory jobs</title>
+<style>
+:root {
+  --bg: #f4f5f7; --surface: #ffffff; --surface-2: #eceef2; --text: #1b1f27; --muted: #5a6372;
+  --border: #cfd4dc; --accent: #1a56c4; --focus: #1a56c4;
+  --pass-bg: #d5f0dd; --pass-fg: #0b5226;
+  --changes-bg: #fde3c4; --changes-fg: #7a3d00;
+  --notrun-bg: #e3e6eb; --notrun-fg: #3d4553;
+  --missing-bg: #fbd5d5; --missing-fg: #8a1414;
+  --risk-bg: #8a1414; --risk-fg: #ffffff;
+  --needs-bg: #fdf0e1; --needs-border: #c26a00;
+  --live: #1d8a45;
+  --stale-bg: #fff4d6; --stale-fg: #5c4300; --stale-border: #b08600;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #12151a; --surface: #1c2027; --surface-2: #272c35; --text: #e6e9ee; --muted: #9aa4b2;
+    --border: #3a414d; --accent: #7aa7ff; --focus: #9bbcff;
+    --pass-bg: #15402a; --pass-fg: #a6e8bd;
+    --changes-bg: #4d3410; --changes-fg: #ffd199;
+    --notrun-bg: #2f353f; --notrun-fg: #c3cad5;
+    --missing-bg: #561c1c; --missing-fg: #ffbcbc;
+    --risk-bg: #ff8a8a; --risk-fg: #3b0a0a;
+    --needs-bg: #33261a; --needs-border: #e0a050;
+    --live: #5fd38a;
+    --stale-bg: #3a3012; --stale-fg: #ffe08a; --stale-border: #c9a227;
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; overflow-x: hidden; }
+body { background: var(--bg); color: var(--text); font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+::selection { background: var(--accent); color: var(--surface); }
+header { display: flex; justify-content: space-between; align-items: center; gap: 8px 12px; padding: 8px 16px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.title { display: flex; align-items: baseline; gap: 10px; min-width: 0; flex-wrap: wrap; }
+h1 { font-size: 16px; margin: 0; }
+#status { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+#offline { margin: 12px 16px 0; padding: 8px 12px; border: 1px solid var(--stale-border); border-radius: 8px; background: var(--stale-bg); color: var(--stale-fg); }
+#offline[hidden] { display: none; }
+.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+/* Targets: 32px with a mouse, 44px on touch screens. */
+:root { --target: 32px; }
+@media (pointer: coarse) { :root { --target: 44px; } }
+.check { display: inline-flex; align-items: center; gap: 6px; min-height: var(--target); padding: 0 6px; border-radius: 6px; cursor: pointer; }
+.check input { width: 18px; height: 18px; margin: 0; cursor: pointer; accent-color: var(--accent); }
+.filter { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+#board { display: flex; flex-direction: column; gap: 16px; padding: 16px; }
+/* Stale data: the board stays readable but stops pretending to be live. */
+#board.stale { filter: saturate(.35); opacity: .75; }
+#board.stale .live::before, #board.orca-down .live::before { animation: none; }
+#board.orca-down .live { color: var(--muted); }
+.lane { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px 12px; min-width: 0; }
+.lane > header { padding: 0 0 8px; border: 0; justify-content: flex-start; align-items: baseline; }
+.lane h2.repo { font-size: 15px; margin: 0; color: var(--text); }
+.lane .path { color: var(--muted); font: 12px ui-monospace, Menlo, Consolas, monospace; overflow-wrap: anywhere; }
+.lane .counts { color: var(--muted); font-size: 12px; margin-left: auto; font-variant-numeric: tabular-nums; }
+.cols { display: grid; grid-template-columns: var(--cols, repeat(4, minmax(0, 1fr))); gap: 10px; align-items: start; }
+.col { background: var(--surface-2); border: 1px solid transparent; border-radius: 8px; padding: 8px; min-width: 0; }
+.col.empty { padding: 4px 8px; }
+.col.empty h3 { margin: 4px; }
+.col.needs.has { background: var(--needs-bg); border-color: var(--needs-border); }
+.col.needs.has h3 { color: var(--needs-border); }
+.lane .needcount { font-weight: 600; color: var(--needs-border); }
+.more { all: unset; box-sizing: border-box; display: inline-flex; align-items: center; min-height: var(--target); cursor: pointer; font-size: 12px; color: var(--accent); padding: 0 6px; border-radius: 4px; }
+.more:hover { text-decoration: underline; text-underline-offset: 3px; }
+.more:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.live { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; color: var(--live); }
+.live::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; animation: pulse 1.4s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: .25; } }
+@media (prefers-reduced-motion: reduce) { .live::before { animation: none; } }
+.col h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 4px 4px 8px; display: flex; justify-content: space-between; gap: 8px; white-space: nowrap; }
+.cards { display: flex; flex-direction: column; gap: 8px; }
+.cardwrap { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; }
+.cardwrap.is-live { border-color: var(--live); box-shadow: inset 0 0 0 1px var(--live); }
+.cardwrap.closed { background: transparent; }
+.cardwrap.closed .feat { color: var(--muted); }
+.cardwrap:has(button.card):hover { border-color: var(--accent); }
+.cardwrap:has(.card:focus-visible) { outline: 3px solid var(--focus); outline-offset: 2px; }
+.card { all: unset; box-sizing: border-box; display: block; width: 100%; color: var(--text); overflow-wrap: anywhere; }
+button.card { cursor: pointer; }
+.file:focus-visible, #close:focus-visible, #view:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.card .id { font-weight: 600; font-size: 12px; color: var(--muted); min-width: 0; }
+.card .feat { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden; margin: 2px 0 6px; }
+.card .top { display: flex; justify-content: space-between; gap: 6px; align-items: baseline; }
+.stage { flex: none; white-space: nowrap; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+/* What needs you, by severity: failed is red, blocked is outlined, held is amber. */
+.stage.failed, .stage.blocked, .stage.held { padding: 0 6px; border-radius: 4px; border: 1px solid transparent; }
+.stage.failed { background: var(--missing-bg); color: var(--missing-fg); border-color: var(--missing-fg); }
+.stage.blocked { color: var(--text); border-color: var(--text); }
+.stage.held { background: var(--changes-bg); color: var(--changes-fg); }
+/* A folded Done card: title, then stage, on one line. */
+.folded .card { display: flex; align-items: baseline; gap: 8px; }
+.folded .card .feat { flex: 1; min-width: 0; margin: 0; -webkit-line-clamp: 1; line-clamp: 1; }
+.folded .card .top { order: 2; }
+.folded .card .id, .folded .card .row, .folded .card .foot, .folded .card .why { display: none; }
+.card[aria-expanded] .stage::after { content: ""; display: inline-block; width: 5px; height: 5px; margin: 0 2px 2px 8px; border: solid currentColor; border-width: 0 1.5px 1.5px 0; transform: rotate(45deg); vertical-align: middle; }
+.card[aria-expanded="true"] .stage::after { transform: rotate(-135deg); margin-bottom: -1px; }
+.cardwrap > .more { margin: 4px -6px -4px; }
+.card .why { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; margin: 0 0 6px; font-size: 12px; }
+.card .foot { display: flex; flex-wrap: wrap; column-gap: 12px; margin-top: 6px; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.card .foot span { white-space: nowrap; }
+.row { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.chip, .risk { font-size: 11px; font-weight: 600; padding: 1px 6px; border-radius: 999px; border: 1px solid transparent; }
+.chip.PASS { background: var(--pass-bg); color: var(--pass-fg); }
+.chip.CHANGES { background: var(--changes-bg); color: var(--changes-fg); border-style: dashed; border-color: var(--changes-fg); }
+.chip.NOTRUN, .chip.PENDING { background: var(--notrun-bg); color: var(--notrun-fg); }
+.chip.MISSING { background: var(--missing-bg); color: var(--missing-fg); border-style: dotted; border-color: var(--missing-fg); }
+.chip.stuck { background: var(--stale-bg); color: var(--stale-fg); border-color: var(--stale-border); }
+.risk { background: var(--risk-bg); color: var(--risk-fg); }
+/* Finished work keeps its risk mark, quietly. */
+.col.done .risk { background: transparent; color: var(--missing-fg); border-color: currentColor; }
+.chip.hold { background: var(--changes-bg); color: var(--changes-fg); }
+#repofilter { font: inherit; max-width: 100%; min-width: 0; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 0 6px; min-height: var(--target); }
+.tools { display: flex; align-items: center; gap: 4px 12px; min-width: 0; flex-wrap: wrap; justify-content: flex-end; }
+.empty { color: var(--muted); font-size: 12px; padding: 4px; }
+#drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(720px, 100%); background: var(--surface); border-left: 1px solid var(--border); box-shadow: -4px 0 16px rgba(0,0,0,.25); display: flex; flex-direction: column; padding: 12px 16px; gap: 10px; }
+#drawer[hidden] { display: none; }
+#drawer header { padding: 0; border: 0; align-items: flex-start; flex-wrap: nowrap; }
+#dtitle { flex: 1; min-width: 0; margin: 0; font-size: 15px; overflow-wrap: anywhere; }
+#dtitle .sub { display: block; font-size: 12px; font-weight: 600; color: var(--muted); }
+#scrim { position: fixed; inset: 0; background: rgba(0,0,0,.3); }
+#scrim[hidden] { display: none; }
+#close { all: unset; box-sizing: border-box; display: inline-flex; align-items: center; min-height: var(--target); flex: none; white-space: nowrap; cursor: pointer; padding: 0 12px; border: 1px solid var(--border); border-radius: 6px; }
+#close:hover { border-color: var(--accent); }
+#dsum { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 12px; margin: 0; font-size: 13px; }
+#dsum dt { color: var(--muted); }
+#dsum dd { margin: 0; overflow-wrap: anywhere; }
+#dsum dd.mono { font: 12px/1.6 ui-monospace, Menlo, Consolas, monospace; }
+#dsum ul { margin: 0; padding-left: 18px; }
+#files { display: flex; flex-direction: column; gap: 6px; max-height: 30vh; overflow: auto; flex: none; }
+.fgroup { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.fgroup h3 { flex-basis: 100%; margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+.file { all: unset; box-sizing: border-box; display: inline-flex; align-items: center; min-height: var(--target); cursor: pointer; font: 12px ui-monospace, Menlo, Consolas, monospace; padding: 0 8px; border: 1px solid var(--border); border-radius: 4px; overflow-wrap: anywhere; }
+.file:hover { border-color: var(--accent); }
+.file[aria-current="true"] { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+#view { flex: 1; overflow: auto; min-height: 0; border-top: 1px solid var(--border); padding-top: 10px; }
+#view pre { margin: 0 0 10px; white-space: pre-wrap; overflow-wrap: anywhere; font: 12px/1.45 ui-monospace, Menlo, Consolas, monospace; }
+#view .md { max-width: 72ch; line-height: 1.5; }
+#view .md h3, #view .md h4, #view .md h5 { margin: 16px 0 6px; line-height: 1.25; }
+#view .md h3 { font-size: 16px; } #view .md h4 { font-size: 14px; } #view .md h5 { font-size: 13px; }
+#view .md p, #view .md ul, #view .md ol { margin: 0 0 10px; }
+#view .md code { font: 12px ui-monospace, Menlo, Consolas, monospace; background: var(--surface-2); padding: 0 3px; border-radius: 3px; }
+#view .md pre { background: var(--surface-2); padding: 8px; border-radius: 6px; }
+#view .err { color: var(--missing-fg); }
+#view img { max-width: 100%; height: auto; }
+@media (max-width: 900px) { .cols { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) {
+  /* One column: what needs you first, then the empty groups as one row of headings. */
+  .cols { display: flex; flex-wrap: wrap; gap: 8px; }
+  .col.has { flex: 1 0 100%; }
+  .col.empty { flex: none; order: -1; }
+  .col.needs.has { order: -2; }
+  .lane .counts { margin-left: 0; flex-basis: 100%; }
+  .tools { justify-content: flex-start; }
+}
+</style>
+</head>
+<body>
+<header id="top"><div class="title"><h1>Factory jobs</h1><span id="status">loading</span></div><div class="tools"><label class="check"><input type="checkbox" id="activeonly"> Active lanes only</label><span class="filter"><label for="repofilter">Repo</label><select id="repofilter"><option value="">All repos</option></select></span></div></header>
+<div id="offline" hidden></div>
+<div id="announce" class="sr-only" role="status" aria-live="polite"></div>
+<main id="board" aria-label="Factory jobs by repo"></main>
+<div id="scrim" hidden></div>
+<aside id="drawer" hidden role="dialog" aria-modal="true" aria-labelledby="dtitle">
+  <header><h2 id="dtitle"></h2><button id="close" type="button">Close (Esc)</button></header>
+  <dl id="dsum"></dl>
+  <nav id="files" aria-label="Job files"></nav>
+  <div id="view" tabindex="0" aria-label="File contents"></div>
+</aside>
+<script>
+"use strict";
+const ACTIVE = ["spec", "build", "review", "verify"];
+// Stage groups, left to right. "needs" holds what waits on the user.
+const COLS = [
+  ["queue", "Queue", ["backlog"]], ["flight", "In flight", ACTIVE],
+  ["needs", "Needs you", ["held", "blocked", "failed"]], ["done", "Done", ["merged", "shipped", "closed"]],
+];
+const DONE_SHOWN = 3;
+const STUCK_MIN = 20;
+const SEVERITY = { failed: 0, blocked: 1, held: 2 };
+const LENSES = ["security", "code", "ux", "ui"];
+const $ = (id) => document.getElementById(id);
+let openJob = null, openLane = null, openerBtn = null, openFile = "", lastKey = "", lastData = null;
+let repoSel = "", activeOnly = false;
+let lastStages = null, lastConn = "", lastOrca = null, offlineSince = null;
+const showAllDone = new Set();
+const expanded = new Set();  // data-ids of Done cards the user unfolded
+let uid = 0;
+
+function el(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text !== undefined) e.textContent = text;
+  return e;
+}
+
+function plural(n, word) { return n + " " + word + (n === 1 ? "" : "s"); }
+
+function colOf(stage) {
+  const c = COLS.find((g) => g[2].includes(stage));
+  return c ? c[0] : "flight";
+}
+
+function verdict(job, lens) {
+  const r = (job.reviews || {})[lens];
+  const v = typeof r === "string" ? r : r && r.verdict;
+  return ["PASS", "CHANGES", "NOT RUN"].includes(v) ? v : "MISSING";
+}
+
+// Minutes since the job file last changed, or null when the time is unreadable.
+function minsSince(iso) {
+  const t = Date.parse(iso || "");
+  return Number.isNaN(t) ? null : Math.max(0, Math.floor((Date.now() - t) / 60000));
+}
+
+function ago(m) {
+  if (m === null) return "";
+  if (m < 1) return "just now";
+  if (m < 60) return m + "m ago";
+  if (m < 1440) return Math.floor(m / 60) + "h ago";
+  return Math.floor(m / 1440) + "d ago";
+}
+
+function str(v) { return typeof v === "string" && v.trim() ? v.trim() : ""; }
+
+// Why a job waits on the user, in one line. The full reasons are in the drawer.
+function whyLine(job) {
+  const hold = job.hold && typeof job.hold === "object" ? job.hold : {};
+  const reasons = Array.isArray(hold.reasons) ? hold.reasons.filter((r) => str(r)) : [];
+  if (job.stage === "held") return reasons[0] || (str(hold.kind) ? "Held: " + hold.kind + "." : "Held, no reason recorded.");
+  const own = str(job.reason) || str(job.error);
+  if (own) return own;
+  if (job.stage === "blocked") return (job.files || []).includes("build.md") ? "The builder stopped; build.md says why." : "The builder stopped before finishing.";
+  if (job.stage === "failed") return "No reason recorded in job.json; the job files may say more.";
+  return "";
+}
+
+function liveText(job) {
+  const what = (job.live || []).map((w) => {
+    const kind = w.kind === job.stage ? "" : w.kind || "";
+    return [kind, w.lens || ""].filter(Boolean).join(" ");
+  }).filter(Boolean);
+  return "live" + (what.length ? ": " + what.join(", ") : "");
+}
+
+function card(job, lane) {
+  const backlog = job.stage === "backlog";
+  const b = el(backlog ? "div" : "button", "card");
+  if (!backlog) b.type = "button";
+  b.dataset.id = lane.key + "/" + job.id;
+  const n = ++uid;
+  const top = el("span", "top");
+  const idEl = el("span", "id", job.id);
+  idEl.id = "c" + n + "i";
+  top.append(idEl);
+  const stageEl = el("span", "stage " + job.stage, job.stage);
+  stageEl.id = "c" + n + "s";
+  if (!backlog) top.append(stageEl);
+  const feat = el("span", "feat", job.feature || "");
+  feat.id = "c" + n + "f";
+  feat.title = job.feature || "";
+  b.append(top, feat);
+  const desc = [];
+  if (colOf(job.stage) === "needs") {
+    const why = el("span", "why", whyLine(job));
+    why.id = "c" + n + "w";
+    b.append(why);
+    desc.push(why.id);
+  }
+  const row = el("span", "row");
+  row.id = "c" + n + "r";
+  const live = job.live || [];
+  if (live.length) row.append(el("span", "live", liveText(job)));
+  const m = minsSince(job.updated);
+  if (ACTIVE.includes(job.stage) && !live.length && m !== null && m >= STUCK_MIN) {
+    row.append(el("span", "chip stuck", "no update for " + ago(m).replace(" ago", "")));
+  }
+  if (!backlog && job.round && job.stage !== "closed") {
+    // Passing lenses collapse into one chip; any other verdict is named.
+    const passed = LENSES.filter((lens) => verdict(job, lens) === "PASS").length;
+    if (passed) row.append(el("span", "chip PASS", "✓ " + passed + "/" + LENSES.length + " pass"));
+    const pending = ACTIVE.includes(job.stage);
+    for (const lens of LENSES) {
+      const v = verdict(job, lens);
+      if (v === "PASS") continue;
+      if (v === "MISSING") row.append(el("span", "chip " + (pending ? "PENDING" : "MISSING"), lens + ": " + (pending ? "pending" : "no verdict")));
+      else row.append(el("span", "chip " + v.replace(" ", ""), lens + ": " + v.toLowerCase()));
+    }
+  }
+  if (job.risk === "FLAGGED") row.append(el("span", "risk", "RISK"));
+  const kind = job.hold && job.hold.kind;
+  if (job.stage === "held" && typeof kind === "string") row.append(el("span", "chip hold", "hold: " + kind));
+  if (row.childNodes.length) { b.append(row); desc.push(row.id); }
+  const foot = [];
+  if (!backlog && job.round) foot.push("round " + job.round);
+  if (!backlog && m !== null) foot.push("updated " + ago(m));
+  if (job.run) foot.push("run " + job.run);
+  if (foot.length) {
+    const f = el("span", "foot");
+    f.id = "c" + n + "t";
+    for (const t of foot) f.append(el("span", "", t));
+    b.append(f);
+    desc.push(f.id);
+  }
+  const wrap = el("div", "cardwrap" + (live.length ? " is-live" : "") + (job.stage === "closed" ? " closed" : ""));
+  wrap.append(b);
+  // Done cards (merged, shipped, closed) fold to their stage and title; a click unfolds the
+  // details and a files button.
+  const folds = colOf(job.stage) === "done";
+  const open = folds && expanded.has(b.dataset.id);
+  if (folds) {
+    b.setAttribute("aria-labelledby", [stageEl.id, feat.id].join(" "));
+    b.setAttribute("aria-expanded", String(open));
+    if (open) b.setAttribute("aria-describedby", [idEl.id].concat(desc).join(" "));
+    else wrap.classList.add("folded");
+    b.addEventListener("click", () => {
+      if (open) expanded.delete(b.dataset.id); else expanded.add(b.dataset.id);
+      lastKey = "";
+      render(lastData);
+    });
+    if (open) {
+      const files = el("button", "more", "Open job files");
+      files.type = "button";
+      files.dataset.id = b.dataset.id + "/files";
+      files.addEventListener("click", () => openDrawer(job, lane, files));
+      wrap.append(files);
+    }
+  } else if (!backlog) {
+    b.setAttribute("aria-labelledby", [idEl.id, stageEl.id, feat.id].join(" "));
+    b.setAttribute("aria-describedby", desc.join(" "));
+    b.addEventListener("click", () => openDrawer(job, lane, b));
+  }
+  return wrap;
+}
+
+function laneActive(lane) {
+  return (lane.jobs || []).some((j) => ACTIVE.includes(j.stage) || (j.live || []).length);
+}
+
+// 0: live or in flight, 1: waiting on the user, 2: the rest. Ties keep discovery order.
+function laneRank(lane) {
+  if (laneActive(lane)) return 0;
+  return (lane.jobs || []).some((j) => colOf(j.stage) === "needs") ? 1 : 2;
+}
+
+function syncRepos(lanes) {
+  const sel = $("repofilter");
+  const keys = lanes.map((l) => l.key);
+  if (repoSel && !keys.includes(repoSel)) repoSel = "";
+  sel.replaceChildren(new Option("All repos", ""));
+  for (const l of lanes) sel.append(new Option(l.name, l.key));
+  sel.value = repoSel;
+}
+
+function renderLane(lane) {
+  const by = {};
+  for (const [k] of COLS) by[k] = [];
+  (lane.backlog || []).forEach((it, i) => {
+    if (it.state === " " || (it.state === "~" && !it.job_id)) {
+      by.queue.push({ id: "#" + (it.n || i + 1), feature: it.feature, stage: "backlog", round: 0, reviews: {} });
+    }
+  });
+  for (const j of lane.jobs || []) by[colOf(j.stage)].push(j);
+  const sec = el("section", "lane");
+  sec.setAttribute("aria-label", lane.name);
+  const head = el("header");
+  head.append(el("h2", "repo", lane.name), el("span", "path", lane.repo));
+  const live = (lane.jobs || []).reduce((n, j) => n + (j.live || []).length, 0);
+  const counts = el("span", "counts", by.flight.length + " in flight · " + plural(live, "live worker") + " · " + by.queue.length + " queued");
+  if (by.needs.length) counts.prepend(el("span", "needcount", by.needs.length + " need" + (by.needs.length === 1 ? "s" : "") + " you · "));
+  head.append(counts);
+  sec.append(head);
+  const cols = el("div", "cols");
+  // Done: merged and shipped before closed, newest first, so the cap keeps what matters. Needs you: worst first.
+  by.done.sort((a, b) => (a.stage === "closed") - (b.stage === "closed") || String(b.id).localeCompare(String(a.id)));
+  by.needs.sort((a, b) => SEVERITY[a.stage] - SEVERITY[b.stage] || String(a.id).localeCompare(String(b.id)));
+  // Empty groups shrink to their heading so the full ones get the width.
+  cols.style.setProperty("--cols", COLS.map(([k]) => by[k].length ? "minmax(0, 1fr)" : "max-content").join(" "));
+  for (const [k, label] of COLS) {
+    const col = el("section", "col " + k + (by[k].length ? " has" : " empty"));
+    const h = el("h3", "", label);
+    h.append(el("span", "", String(by[k].length)));
+    col.append(h);
+    if (!by[k].length) { cols.append(col); continue; }
+    const cards = el("div", "cards");
+    const all = showAllDone.has(lane.key);
+    const shown = k === "done" && !all ? by[k].slice(0, DONE_SHOWN) : by[k];
+    for (const j of shown) cards.append(card(j, lane));
+    if (k === "done" && by[k].length > DONE_SHOWN) {
+      const more = el("button", "more", all ? "Show fewer" : "Show " + (by[k].length - DONE_SHOWN) + " more");
+      more.type = "button";
+      more.dataset.id = lane.key + "/more";
+      more.addEventListener("click", () => {
+        if (all) showAllDone.delete(lane.key); else showAllDone.add(lane.key);
+        lastKey = "";
+        render(lastData);
+      });
+      cards.append(more);
+    }
+    col.append(cards);
+    cols.append(col);
+  }
+  sec.append(cols);
+  return sec;
+}
+
+function render(data) {
+  // The minute is part of the key so "updated 3m ago" keeps counting.
+  const key = JSON.stringify(data) + "|" + repoSel + "|" + activeOnly + "|" + Math.floor(Date.now() / 60000);
+  if (key === lastKey) return;
+  lastKey = key;
+  lastData = data;
+  const lanes = data.lanes || [];
+  syncRepos(lanes);
+  const board = $("board");
+  board.classList.toggle("orca-down", !data.orca);
+  const focused = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.id : null;
+  board.replaceChildren();
+  uid = 0;
+  const shown = lanes.filter((l) => (!repoSel || l.key === repoSel) && (!activeOnly || laneActive(l)))
+    .map((l, i) => [l, i]).sort((a, b) => laneRank(a[0]) - laneRank(b[0]) || a[1] - b[1]).map((x) => x[0]);
+  if (!shown.length) board.append(el("p", "empty", lanes.length ? "No lane matches the filter." : "No repo has a .factory folder yet. Run /factory init in one."));
+  for (const lane of shown) board.append(renderLane(lane));
+  if (focused) { const f = board.querySelector('[data-id="' + CSS.escape(focused) + '"]'); if (f) f.focus(); }
+  if (openJob && openLane) {
+    const l = lanes.find((x) => x.key === openLane.key);
+    const j = l && (l.jobs || []).find((x) => x.id === openJob.id);
+    if (j) {
+      const changed = JSON.stringify(j) !== JSON.stringify(openJob);
+      openJob = j; openLane = l;
+      if (changed) fillDrawer(false);
+    }
+  }
+}
+
+async function poll() {
+  try {
+    const r = await fetch("/api/lanes", { cache: "no-store" });
+    if (!r.ok) throw new Error(String(r.status));
+    const data = await r.json();
+    render(data);
+    $("status").textContent = "live · updated " + new Date().toLocaleTimeString() + (data.orca ? "" : " · Orca workers unavailable, live marks may be out of date");
+    $("board").classList.remove("stale");
+    $("offline").hidden = true;
+    offlineSince = null;
+    const news = stageChanges(data);
+    if (lastConn === "offline") news.unshift("Dashboard back online.");
+    if (lastOrca !== null && lastOrca !== !!data.orca) news.push(data.orca ? "Orca workers available again." : "Orca workers unavailable.");
+    lastConn = "online"; lastOrca = !!data.orca;
+    announce(news);
+  } catch (e) {
+    if (!offlineSince) offlineSince = new Date();
+    $("status").textContent = "offline, retrying";
+    $("board").classList.add("stale");
+    const box = $("offline");
+    box.textContent = "The dashboard server stopped answering at " + offlineSince.toLocaleTimeString() + ". The board shows the last data it received; it retries every 3 seconds. Run /factory dashboard to restart it.";
+    box.hidden = false;
+    if (lastConn !== "offline") announce(["Dashboard offline, retrying."]);
+    lastConn = "offline";
+  }
+}
+
+// The visible status line changes every poll, so it is not a live region. Only real changes are
+// announced: a job appearing or changing stage, and the connection or Orca going away or back.
+// Jobs that now need the user are announced first.
+function stageChanges(data) {
+  const now = new Map();
+  for (const lane of data.lanes || []) {
+    for (const j of lane.jobs || []) now.set(lane.key + "/" + j.id, [lane.name, j.id, j.stage]);
+  }
+  const urgent = [], rest = [];
+  if (lastStages) {
+    for (const [k, [repo, id, stage]] of now) {
+      const before = lastStages.get(k);
+      if (before && before[2] === stage) continue;
+      if (colOf(stage) === "needs") urgent.push(repo + ": job " + id + " is " + stage + " and needs you.");
+      else rest.push(repo + ": job " + id + (before ? " moved to " : " appeared in ") + stage + ".");
+    }
+    for (const [k, [repo, id]] of lastStages) if (!now.has(k)) rest.push(repo + ": job " + id + " is gone.");
+  }
+  lastStages = now;
+  return urgent.concat(rest);
+}
+
+function announce(lines) {
+  if (lines.length) $("announce").textContent = lines.slice(0, 5).join(" ") + (lines.length > 5 ? " And " + (lines.length - 5) + " more changes." : "");
+}
+
+// The file to show when the drawer opens: what explains the job's state best.
+function defaultFile(job) {
+  const files = job.files || [];
+  const want = job.stage === "blocked" ? ["build.md", "report.md", "spec.md"]
+    : ACTIVE.includes(job.stage) ? ["spec.md", "build.md"] : ["report.md", "build.md", "spec.md"];
+  return want.find((f) => files.includes(f)) || files[0] || "";
+}
+
+function openDrawer(job, lane, btn) {
+  openJob = job; openLane = lane; openerBtn = btn; openFile = "";
+  fillDrawer(true);
+  if ($("drawer").hidden) history.pushState({ drawer: true }, "");
+  $("drawer").hidden = false;
+  $("scrim").hidden = false;
+  for (const id of ["top", "board", "offline"]) $(id).inert = true;
+  $("close").focus();
+}
+
+function summaryRow(dl, term, value, mono) {
+  if (!value || (Array.isArray(value) && !value.length)) return;
+  const dd = el("dd", mono ? "mono" : "");
+  if (Array.isArray(value)) {
+    const ul = el("ul");
+    for (const v of value) ul.append(el("li", "", v));
+    dd.append(ul);
+  } else dd.textContent = value;
+  dl.append(el("dt", "", term), dd);
+}
+
+// Fills the drawer from openJob. On a poll refresh it keeps the file being read.
+function fillDrawer(fresh) {
+  const job = openJob, lane = openLane;
+  const t = $("dtitle");
+  t.replaceChildren(el("span", "sub", lane.name + " · " + job.id), document.createTextNode(job.feature || ""));
+  const dl = $("dsum");
+  dl.replaceChildren();
+  const hold = job.hold && typeof job.hold === "object" ? job.hold : {};
+  const m = minsSince(job.updated);
+  summaryRow(dl, "Stage", job.stage + (job.round ? " · round " + job.round : "") + (m !== null ? " · updated " + ago(m) : ""));
+  if (colOf(job.stage) === "needs") {
+    const reasons = Array.isArray(hold.reasons) ? hold.reasons.filter((r) => str(r)) : [];
+    summaryRow(dl, "Why", reasons.length > 1 ? reasons : reasons[0] || whyLine(job));
+    summaryRow(dl, "Paths", Array.isArray(hold.paths) ? hold.paths.filter((p) => str(p)) : [], true);
+  }
+  summaryRow(dl, "Branch", str(job.branch), true);
+  summaryRow(dl, "Worktree", str(job.worktree), true);
+  summaryRow(dl, "Run", str(job.run), true);
+  const files = $("files");
+  files.replaceChildren();
+  const groups = new Map();
+  for (const f of job.files || []) {
+    const g = /^round-(\d+)\//.exec(f);
+    const label = g ? "Round " + g[1] : "Job";
+    if (!groups.has(label)) groups.set(label, []);
+    groups.get(label).push(f);
+  }
+  for (const [label, list] of groups) {
+    const g = el("div", "fgroup");
+    g.append(el("h3", "", label));
+    for (const f of list) {
+      const b = el("button", "file", label === "Job" ? f : f.replace(/^round-\d+\//, ""));
+      b.type = "button";
+      b.dataset.rel = f;
+      b.addEventListener("click", () => showFile(lane.key, job.dir || job.id, f));
+      g.append(b);
+    }
+    files.append(g);
+  }
+  if (!(job.files || []).length) files.append(el("p", "empty", "No files yet. They appear here as the job writes them."));
+  if (fresh || !(job.files || []).includes(openFile)) {
+    const f = defaultFile(job);
+    if (f) showFile(lane.key, job.dir || job.id, f); else $("view").replaceChildren();
+  } else markCurrent(openFile);
+}
+
+function markCurrent(rel) {
+  for (const b of $("files").querySelectorAll(".file")) {
+    if (b.dataset.rel === rel) b.setAttribute("aria-current", "true"); else b.removeAttribute("aria-current");
+  }
+}
+
+// Close through history so the browser's Back button and the in-page controls agree.
+function closeDrawer() {
+  if (history.state && history.state.drawer) history.back();
+  else hideDrawer();
+}
+
+function hideDrawer() {
+  $("drawer").hidden = true;
+  $("scrim").hidden = true;
+  for (const id of ["top", "board", "offline"]) $(id).inert = false;
+  openJob = null; openLane = null; openFile = "";
+  if (openerBtn && document.contains(openerBtn)) openerBtn.focus();
+  else if (openerBtn && openerBtn.dataset.id) {
+    const f = $("board").querySelector('[data-id="' + CSS.escape(openerBtn.dataset.id) + '"]');
+    if (f) f.focus();
+  }
+}
+
+// `code` and **bold** inside one line of Markdown, as DOM nodes (never HTML).
+function inline(parent, text) {
+  for (const part of text.split(/(`[^`]+`|\*\*[^*]+\*\*)/)) {
+    if (!part) continue;
+    if (part.startsWith("`") && part.endsWith("`") && part.length > 1) parent.append(el("code", "", part.slice(1, -1)));
+    else if (part.startsWith("**") && part.endsWith("**") && part.length > 3) parent.append(el("strong", "", part.slice(2, -2)));
+    else parent.append(document.createTextNode(part));
+  }
+}
+
+// A small Markdown subset: headings, lists, fenced code, tables as monospace, paragraphs.
+function markdown(src) {
+  const root = el("div", "md");
+  let list = null, para = null, pre = null, table = null;
+  const flush = () => { list = null; para = null; table = null; };
+  for (const line of src.split("\n")) {
+    if (pre) {
+      if (/^```/.test(line)) pre = null; else pre.textContent += line + "\n";
+      continue;
+    }
+    if (/^```/.test(line)) { flush(); pre = el("pre"); root.append(pre); continue; }
+    if (/^\s*\|/.test(line)) {
+      if (!table) { flush(); table = el("pre"); root.append(table); }
+      table.textContent += line + "\n";
+      continue;
+    }
+    const h = /^(#{1,6})\s+(.*)$/.exec(line);
+    if (h) { flush(); const e = el("h" + Math.min(5, h[1].length + 2)); inline(e, h[2]); root.append(e); continue; }
+    const li = /^\s*(?:([-*])|(\d+)\.)\s+(.*)$/.exec(line);
+    if (li) {
+      const tag = li[1] ? "ul" : "ol";
+      if (!list || list.tagName.toLowerCase() !== tag) { flush(); list = el(tag); root.append(list); }
+      const e = el("li"); inline(e, li[3]); list.append(e);
+      continue;
+    }
+    if (!line.trim()) { flush(); continue; }
+    if (list && /^\s+/.test(line)) { inline(list.lastChild, " " + line.trim()); continue; }
+    if (!para) { list = null; table = null; para = el("p"); root.append(para); } else para.append(document.createTextNode(" "));
+    inline(para, line);
+  }
+  return root;
+}
+
+async function showFile(laneKey, jobId, rel) {
+  openFile = rel;
+  markCurrent(rel);
+  const url = "/files/" + encodeURIComponent(laneKey) + "/" + encodeURIComponent(jobId) + "/" + rel.split("/").map(encodeURIComponent).join("/");
+  const view = $("view");
+  if (rel.includes("screenshots/") && rel.endsWith(".png")) {
+    const img = document.createElement("img");
+    img.alt = "Screenshot " + rel; img.src = url;
+    view.replaceChildren(img);
+    return;
+  }
+  try {
+    const r = await fetch(url, { cache: "no-store" });
+    if (openFile !== rel) return;
+    if (!r.ok) {
+      view.replaceChildren(el("p", "err", r.status === 404
+        ? rel + " is no longer there. The job may have moved on; the list updates on the next refresh."
+        : "The dashboard would not show " + rel + " (HTTP " + r.status + ")."));
+      return;
+    }
+    const text = await r.text();
+    if (openFile !== rel) return;
+    view.replaceChildren(rel.endsWith(".md") ? markdown(text) : Object.assign(el("pre"), { textContent: text }));
+  } catch (e) {
+    if (openFile === rel) view.replaceChildren(el("p", "err", "Could not reach the dashboard to load " + rel + ". It retries the board every 3 seconds; pick the file again once it is back."));
+  }
+}
+
+$("repofilter").addEventListener("change", () => { repoSel = $("repofilter").value; if (lastData) render(lastData); });
+$("activeonly").addEventListener("change", () => { activeOnly = $("activeonly").checked; if (lastData) render(lastData); });
+$("close").addEventListener("click", closeDrawer);
+$("scrim").addEventListener("click", closeDrawer);
+window.addEventListener("popstate", () => { if (!$("drawer").hidden) hideDrawer(); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("drawer").hidden) closeDrawer(); });
+poll();
+setInterval(poll, 3000);
+</script>
+</body>
+</html>

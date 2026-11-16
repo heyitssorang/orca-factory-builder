@@ -1,0 +1,6 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Audit</title></head>
+<body><label for="filter">Filter</label><input id="filter" type="text">
+<table><thead><tr><th>ts</th><th>actor</th><th>action</th><th>target</th></tr></thead><tbody id="rows"></tbody></table>
+<p id="empty" hidden>No matching rows</p>
+<script>fetch('audit.json')</script></body></html>
