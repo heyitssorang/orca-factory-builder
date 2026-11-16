@@ -56,6 +56,42 @@ builder takes from your subscriptions, read both usage meters before and after a
 4. Report the deltas next to the metered cost from `bench.py report`. Percentages are coarse and
    the limits weight cached tokens and models differently, so repeat the run when the gap is small.
 
+### Measured: Sonnet arm, 8 tasks (2026-11-16)
+
+One run of the Sonnet builder arm (scout and planner mandatory, medium effort, `--jobs 4`),
+nothing else using the account. Coordinator wall time 25 min.
+
+| meter | before | after | change |
+|---|---|---|---|
+| 5-hour session | 0% | 15% | +15 |
+| week, all models | 54% | 56% | +2 (1 to 3 after rounding) |
+
+Tokens in the run window, summed from transcripts (all sessions on the machine, deduplicated):
+
+| model | input | output | cache read | cache write | est. $ (API prices) |
+|---|---|---|---|---|---|
+| Opus 5.5 | 284 | 84,050 | 1,610,569 | 498,703 | 5.99 |
+| Sonnet 5.5 | 681 | 141,780 | 16,621,596 | 1,475,548 | 8.96 |
+| Haiku 5.5 | 100 | 48,974 | 643,764 | 160,055 | 0.06 |
+| **total** | 1,065 | 274,804 | 18,875,929 | 2,134,306 | **15.01** |
+
+Per 1% of each meter (total tokens in the run divided by the change):
+
+| per 1% of | output | cache read | cache write | all tokens | API-priced $ |
+|---|---|---|---|---|---|
+| 5-hour session (15%) | 18.3k | 1.26M | 142k | **1.42M** | about 1.0 |
+| week (2%; range 1 to 3%) | 137k | 9.4M | 1.07M | **10.6M** (7.1M to 21M) | about 7.5 (5 to 15) |
+
+Reading: one run of this size is about 15% of a 5-hour window and about 2% of a week, so the
+weekly limit is roughly 7 to 8 times the 5-hour limit. Cache reads are about 89% of all tokens
+but cost little at API prices; output and cache writes carry most of the price. The Opus share
+(8% of messages, 40% of the dollars) comes from the planner and review workers. A single run
+cannot show whether the meters weight Opus tokens differently from Sonnet tokens; that needs
+runs with a different model mix. The weekly figure is the coarsest: a whole-percent meter and a
+delta of 2 leave a wide range, so repeat or run larger batches before quoting it. The window
+includes a few turns of the interactive session that launched the run (about $0.34).
+The Devin arm was not measured (no Devin usage reading).
+
 ## Known limits
 - Devin's tokens are not visible in Claude transcripts; the new arm's coding cost shows as time.
 - One run per task is a direction, not significance.
