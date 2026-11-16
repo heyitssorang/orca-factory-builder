@@ -38,6 +38,24 @@ that arm time, not the grade.
 - **Process:** review rounds, verdicts per lens, confirmed/false-positive findings, risk flags,
   holds, Devin fallbacks, builder engine, whole-repo checks result.
 
+## Measuring subscription usage (Sonnet vs Devin)
+
+The token numbers above are API-priced estimates and cannot see Devin. To compare what each
+builder takes from your subscriptions, read both usage meters before and after a run:
+
+1. Before starting, record the Claude figures (`/usage` in Claude Code, or Settings > Usage on
+   claude.ai): the 5-hour and weekly percentages, and any per-model weekly line. Record the Devin
+   account's own usage or credits figure from its usage or billing page. The `devin` CLI has no
+   usage command.
+2. Run one builder arm alone (`BENCH_ARMS=sonnet`), with nothing else using either account.
+   Record both meters again, then do the same for the other arm (`BENCH_ARMS=new`). Wait for the
+   5-hour window to reset between arms, or take the weekly delta.
+3. Per arm, the Claude delta is what that arm took from the Claude subscription. The Devin delta
+   is what the Devin builder took. The spec and review stages are Claude workers in both arms, so
+   only the builder step differs.
+4. Report the deltas next to the metered cost from `bench.py report`. Percentages are coarse and
+   the limits weight cached tokens and models differently, so repeat the run when the gap is small.
+
 ## Known limits
 - Devin's tokens are not visible in Claude transcripts; the new arm's coding cost shows as time.
 - One run per task is a direction, not significance.
