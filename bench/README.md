@@ -120,6 +120,29 @@ Devin builder saved little Claude quota: the spec, planner and review workers do
 differed: Devin arm merged 4 of 8 jobs, with 2 conflict holds, 1 secret-scan block and 1
 malformed output; the Sonnet arm was not graded. Single run each; treat as a direction.
 
+### Graded: hidden acceptance tests, both builder arms (2026-11-17)
+
+Run on each job's own `factory/<id>` branch (`bench.py collect`, `grade`), so merge-conflict holds
+do not count against a job. The blinded Opus judge was not run. Repo suite and build were green
+on all 16 branches.
+
+| task | Sonnet: hidden tests | lines | Devin: hidden tests | lines |
+|---|---|---|---|---|
+| 01 remove-member | 3/3 pass | 51 | 3/3 pass | 58 |
+| 02 audit-time-filter | 3/3 pass | 89 | 3/3 pass | 119 |
+| 03 laps-lookup | 5/5 pass | 129 | **fail** (no commit) | 0 |
+| 04 role-change-audit | 4/4 pass | 120 | 4/4 pass | 126 |
+| 05 group-cache | 3/3 pass | 172 | 3/3 pass | 184 |
+| 06 disable-recover-user | 5/5 pass | 202 | 5/5 pass | 214 |
+| 07 audit-viewer-page | 3/3 pass | 90 | **fail** (no commit) | 0 |
+| 08 compare-user-and-docs | 5/5 pass | 271 | 5/5 pass | 312 |
+| **passed** | **8 of 8** | 1,124 | **6 of 8** | 1,013 |
+
+Both Devin failures delivered nothing: 03's commit was stopped by the secret scan and 07's Devin
+output was malformed, so those branches have zero commits. Where Devin delivered, it passed every
+hidden test with diffs about 5 to 30% larger than Sonnet's. Tests were added on every task except
+Sonnet's 07. One run per arm: a direction, not significance.
+
 ## Known limits
 - Devin's tokens are not visible in Claude transcripts; the new arm's coding cost shows as time.
 - One run per task is a direction, not significance.
