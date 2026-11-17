@@ -159,15 +159,17 @@ word `PAT` (`env -u <NAME> …` for each; list them with
 ## 4. Step 2: spec
 
 Request a scheduler slot (§9) of kind `spec`, 1 worker. When admitted, start one worker with the
-**spec** task text (`references/worker-tasks.md`), on the repo's main workspace by exact selector,
-`--agent claude --model sonnet`. It delegates in turn to `scout-p7` (`J/context.md`),
-`spec-writer-p7` (`J/spec.md`) and `planner-p7` (`J/plan.md`). On settlement: `J/spec.md` exists
-and is non-empty, else stage `failed`; a missing `J/plan.md` is not a failure. Stage `build`.
+**spec** task text (`references/worker-tasks.md`) in the run's lean spec worktree (`references/spec-workdir.md`;
+else the repo's main workspace), `--agent claude --model sonnet`. It delegates to `scout-p7` (`J/context.md`),
+`spec-writer-p7` (`J/spec.md`), `planner-p7` (`J/plan.md`) in turn. On settlement: `J/spec.md` exists and is
+non-empty, else stage `failed`; a missing `J/plan.md` is not a failure. Stage `build`.
 
 ## 5. Step 3: worktree and build
 
-1. Config-check `<repo>`, fetch (Git hygiene above); `base` = `git -C <repo> rev-parse
-   DREF`; record `base` and `branch` = `B`.
+1. Config-check `<repo>`, fetch (Git hygiene above); `base` = `git -C <repo> rev-parse DREF`, or
+   with `job.after` set the `base` from `S/factory_integrate.py after-base --run RID --after
+   <job.after>` (SHA: dependency merged here, unshipped; `null`: DREF; exit 2: `blocked`, stop).
+   Record `base` and `branch` = `B`.
 2. Child worktree through Orca, never `git worktree add`:
    `ORCA worktree create --repo path:<repo> --name factory-<id> --base-branch DREF
    --setup skip --json`. Record `worktree` (`WT`) and `worktree_id` (the full
@@ -390,8 +392,7 @@ finding as `{lens, n, route, location, text, check_cmd}`. For each without `R/ve
      the user to finish `/factory ship <RID>` first, then rework (the job then moves as for a
      shipped run).
    - Started (`branch` set) and not shipped: the job stays in it. Take over the run as in §10
-     step 3 (`takeover-run … --reason rework`); an active coordinator still drives it → stop and
-     tell the user.
+     step 3 (`takeover-run … --reason rework`); an active coordinator still drives it → stop and tell the user.
    - Shipped (amendment §9), or never started (no `branch`, e.g. `start-run` failed): pick the
      newest (by `created`) run file in `H/runs/` with `branch` set, `shipped`
      null, no ship under way, and an owner whose Orca coordinator is not active; take it over
@@ -438,9 +439,8 @@ Local runs (`ship-status` `mode` = `local`, `origin_has_merge` always null) → 
 2. **Prepare**: `python3 S/factory_integrate.py ship-prepare --run RID --owner RUN` prints
    `{merge_sha, base, run_tip, jobs, commits, files, run_base, origin_moved}` (`base` is the
    server's tip of `D`, local: local `D`'s tip; `origin_moved` counts its commits since the run
-   started). A
-   conflict with `D` lists the paths and the merged jobs touching them; a human or a rework
-   resolves it.
+   started). A conflict with `D` lists the paths and the merged jobs touching them; a human or a
+   rework resolves it.
 3. **Gate**: read `install:` from `git -C <repo> show <base>:AGENTS.md`. If present, ask the
    user **once**: "The gate will run `<install>` (network). Allow? (y/n)". Then
    `python3 S/factory_integrate.py ship-gate --run RID --owner RUN [--allow-install]` (flag only
@@ -466,8 +466,8 @@ Local runs (`ship-status` `mode` = `local`, `origin_has_merge` always null) → 
    its merged jobs `shipped` (backlog `finish` done) and deletes `RB`. It prints `jobs` and
    `skipped` (merged jobs not in the ship merge or not owned by `RUN`): show `skipped` with
    reasons. For each job in `jobs` only, stop its dev server if `server_pgid` is set and `ORCA
-   worktree rm --worktree id:<worktree_id> --json`. Tell the user: run, merge sha, pushed or
-   not (if not: ado "push `D` yourself when ready"; local "local repo, nothing to push"), and
+   worktree rm --worktree id:<worktree_id> --json`; then the run's spec worktree. Tell the user: run, merge sha, pushed or not
+   (if not: ado "push `D` yourself when ready"; local "local repo, nothing to push"), and
    the held jobs left (rework moves them).
 
 ## 14. Status and close

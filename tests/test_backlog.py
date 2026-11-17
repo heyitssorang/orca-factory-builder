@@ -70,6 +70,14 @@ class BacklogTest(unittest.TestCase):
         bad = fb.parse("- [ ] Feat wi:abc\n")[0]
         self.assertEqual((bad.feature, bad.work_item), ("Feat wi:abc", None))
 
+    def test_claim_records_the_dependency_on_the_job(self):
+        """Step 3 needs `after` on job.json to base the job on its dependency's merged code."""
+        self.bl.write_text("- [ ] Feat default:main after:001-a\n- [ ] Plain\n")
+        item, job_id = fb.claim(self.home, "o", line_no=1)
+        self.assertEqual(fj.read_job(self.jobs / job_id)["after"], "001-a")
+        _, plain = fb.claim(self.home, "o")
+        self.assertIsNone(fj.read_job(self.jobs / plain)["after"])
+
     def test_claim_records_work_item(self):
         self.bl.write_text("- [ ] Feat default:main wi:77\n")
         item, job_id = fb.claim(self.home, "o")

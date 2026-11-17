@@ -84,5 +84,22 @@ class LeanTests(unittest.TestCase):
         self.assertEqual(json.loads(p.stdout)["status"], "lean", p.stderr)
 
 
+class SpecWorkdirDocTests(unittest.TestCase):
+    """The spec-stage procedure is prose; pin what it names to what exists."""
+
+    def test_reference_is_linked_and_its_commands_parse(self):
+        skill = (ROOT / "skills/factory/SKILL.md").read_text()
+        ref = (ROOT / "skills/factory/references/spec-workdir.md").read_text()
+        self.assertIn("references/spec-workdir.md", skill)
+        self.assertIn("factory-spec-<RID>", ref)
+        for script, sub, flags in (("factory_push.py", "disable", ["--repo", "--worktree"]),
+                                   ("factory_lean.py", "write", ["--worktree", "--job-dir"])):
+            self.assertIn(f"{script} {sub}", ref)
+            out = subprocess.run([sys.executable, str(ROOT / "scripts" / script), sub, "--help"],
+                                 capture_output=True, text=True).stdout
+            for f in flags:
+                self.assertIn(f, out)
+
+
 if __name__ == "__main__":
     unittest.main()

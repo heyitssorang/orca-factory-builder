@@ -218,6 +218,37 @@ class IntegrateTest(unittest.TestCase):
         self.assertEqual(fi.merge_job(self.home, self.run_id, "001-a", owner="o").status,
                          "refused")
 
+    # --- base for a job that must follow another (`after:`) ---------------------
+
+    def test_a_merged_dependency_is_missing_from_the_default_ref_but_present_on_the_run_tip(self):
+        """The repro: job 002 follows 001, which is merged into the run but not shipped. A worktree
+        based on the default ref (what step 3 used) has no 001 code; the run tip has it."""
+        self.start()
+        self.make_job("001-a", files={"a_api.txt": "def a(): ...\n"})
+        self.assertEqual(self.finish("001-a").status, "merged")
+        dref = "origin/main"
+        self.assertNotEqual(git(self.repo, "cat-file", "-e", f"{dref}:a_api.txt", check=False).returncode, 0)
+        base = fi.after_base(self.home, self.run_id, "001-a")
+        self.assertEqual(base, self.run_tip())
+        self.assertEqual(git(self.repo, "cat-file", "-e", f"{base}:a_api.txt").returncode, 0)
+
+    def test_after_base_is_none_when_the_dependency_is_shipped(self):
+        self.start()
+        self.make_job("001-a")
+        self.assertEqual(self.finish("001-a").status, "merged")
+        fj.update_job(self.home / "jobs" / "001-a", {"stage": "shipped"}, owner="o")
+        self.assertIsNone(fi.after_base(self.home, self.run_id, "001-a"))  # DREF has it
+
+    def test_after_base_refuses_a_dependency_that_is_not_merged_or_is_in_another_run(self):
+        self.start()
+        self.make_job("001-a")
+        with self.assertRaises(fi.Refused):                       # not merged yet
+            fi.after_base(self.home, self.run_id, "001-a")
+        self.assertEqual(self.finish("001-a").status, "merged")
+        self.start("20261016-1300-beef")
+        with self.assertRaises(fi.Refused):                       # merged into a different run
+            fi.after_base(self.home, "20261016-1300-beef", "001-a")
+
     def test_merge_touches_no_checkout_and_runs_no_hook(self):
         self.start()
         self.make_job()

@@ -210,7 +210,8 @@ def claim(home: Path, owner: str, line_no: int | None = None,
         jobs.mkdir(parents=True, exist_ok=True)
         job_id, path = fj.claim_job_dir(jobs, pick.feature)
         fj.new_job(path, feature=pick.feature, repo=str(fj.repo_of(home)), owner=owner,
-                   default_branch=pick.default, work_item=pick.work_item, run=run)
+                   default_branch=pick.default, work_item=pick.work_item, run=run,
+                   after=pick.after)
         lines[pick.line_no - 1] = _retag(lines[pick.line_no - 1], "~", job_id)
         _save(home, lines)
         return pick, job_id

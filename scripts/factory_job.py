@@ -147,12 +147,12 @@ def _write(job_dir: Path, job: dict) -> None:
 
 def new_job(job_dir: Path, *, feature: str, repo: str, owner: str,
             default_branch: str | None = None, work_item: int | None = None,
-            run: str | None = None) -> dict:
+            run: str | None = None, after: str | None = None) -> dict:
     check_owner(owner)
     now = _now()
     job = {
         "id": job_dir.name, "feature": feature, "repo": repo,
-        "default_branch": default_branch, "work_item": work_item, "base": None, "branch": None,
+        "default_branch": default_branch, "work_item": work_item, "after": after, "base": None, "branch": None,
         "worktree": None, "port": None, "stage": "spec", "round": 0,
         "owner": owner, "reviews": {},
         "verified": {"confirmed": 0, "false_positive": 0, "unverifiable": 0},

@@ -694,6 +694,28 @@ def rebase_job(home: Path, job_id: str, *, owner: str) -> dict:
                                     "review_round", "rebased")}
 
 
+def after_base(home: Path, run_id: str, dep_job_id: str) -> str | None:
+    """Commit a job that must follow `dep_job_id` (backlog `after:`) is based on.
+    The default ref when the dependency is shipped (it is in the default branch). The run
+    branch tip when the dependency is merged into this run but not shipped: its code lives only
+    there, and a job based on the default ref would build without it. Anything else is refused:
+    a dependency that is not merged, or is merged into another unshipped run, cannot be built on."""
+    dep = fj.read_job(_job_dir(home, dep_job_id))
+    stage = dep.get("stage")
+    if stage == "shipped":
+        return None
+    if stage != "merged":
+        raise Refused(f"dependency {dep_job_id} is {stage}, not merged")
+    if dep.get("run") != run_id:
+        raise Refused(f"dependency {dep_job_id} is merged into run {dep.get('run')}, "
+                      f"not shipped; ship it or put this job in that run")
+    run = load_run(home, run_id)
+    tip = _resolve(Path(run["repo"]), f"refs/heads/{run['branch']}")
+    if not tip:
+        raise Refused(f"run branch {run.get('branch')} is missing")
+    return tip
+
+
 def run_status(home: Path, run_id: str) -> dict:
     run = load_run(home, run_id)
     held = []
@@ -1196,6 +1218,9 @@ def main(argv=None) -> int:
     tr.add_argument("--run", required=True)
     tr.add_argument("--owner", required=True)
     tr.add_argument("--reason", required=True)
+    ab = sub.add_parser("after-base")
+    ab.add_argument("--run", required=True)
+    ab.add_argument("--after", required=True, help="the job this one follows")
     st = sub.add_parser("status")
     st.add_argument("--run", required=True)
     ss = sub.add_parser("ship-status")
@@ -1234,6 +1259,8 @@ def main(argv=None) -> int:
             out, rc = {"review_head": mark_review(home, args.job, owner=args.owner)}, 0
         elif args.cmd == "takeover-run":
             out, rc = takeover_run(home, args.run, args.owner, reason=args.reason), 0
+        elif args.cmd == "after-base":
+            out, rc = {"base": after_base(home, args.run, args.after)}, 0
         elif args.cmd == "ship-status":
             out, rc = ship_status(home, args.run), 0
         elif args.cmd == "ship-prepare":

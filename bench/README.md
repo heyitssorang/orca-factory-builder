@@ -120,6 +120,10 @@ Devin builder saved little Claude quota: the spec, planner and review workers do
 differed: Devin arm merged 4 of 8 jobs, with 2 conflict holds, 1 secret-scan block and 1
 malformed output; the Sonnet arm was not graded. Single run each; treat as a direction.
 
+The -24% above is whole-machine window totals, not per-job cost. Re-derived per job (bench4/bench5, corrected
+attribution and TTL pricing): -21% on all jobs, about -6% on jobs where both arms did comparable work, and
+equal cost per delivered job ($2.63 vs $2.67). See the report's "Devin vs Sonnet, re-derived" note.
+
 ### Graded: hidden acceptance tests, both builder arms (2026-11-17)
 
 Run on each job's own `factory/<id>` branch (`bench.py collect`, `grade`), so merge-conflict holds
