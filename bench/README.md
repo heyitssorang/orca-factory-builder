@@ -1,9 +1,9 @@
 # Factory benchmark: old skill (`main`) vs new (`feat/devin-builder`)
 
-Same 8 tasks, same synthetic repo (`seed/`, service-shaped: role store, audit log, tools),
-run in two isolated arms in parallel. Nothing from a real project is used; no arm has a remote.
+Same 8 tasks, same synthetic repo (`seed/`, server-tools-shaped: role store, audit log, tools),
+run in two isolated arms in parallel. Nothing from server-tools is used; no arm has a remote.
 
-| task | size | models a feature of a typical service backlog |
+| task | size | models a feature of server-tools' backlog |
 |---|---|---|
 | 01 remove-member, 02 audit-time-filter | S | role store / audit viewer |
 | 03 laps-lookup, 04 role-change-audit, 05 group-cache, 07 audit-viewer-page | M | LAPS tool, G1b audit before/after, DirectMemberOf cache, UI |
@@ -90,7 +90,35 @@ cannot show whether the meters weight Opus tokens differently from Sonnet tokens
 runs with a different model mix. The weekly figure is the coarsest: a whole-percent meter and a
 delta of 2 leave a wide range, so repeat or run larger batches before quoting it. The window
 includes a few turns of the interactive session that launched the run (about $0.34).
-The Devin arm was not measured (no Devin usage reading).
+
+### Measured: Devin arm, 8 tasks (2026-11-16)
+
+One run of the Devin builder arm (same setup as above, `builder: devin`). Coordinator wall time
+38 min. The Devin account is on a free tier and showed 0 usage before the run; no after reading
+was available, so Devin's own spend is not measured.
+
+| meter | before | after | change |
+|---|---|---|---|
+| 5-hour session | 15% | 29% | +14 |
+| week, all models | 56% | 57% | +1 (0 to 2 after rounding) |
+
+Tokens in the run window (all Claude sessions on the machine):
+
+| model | output | cache read | cache write | est. $ (API prices) |
+|---|---|---|---|---|
+| Opus 5.5 | 0.06M | 0.9M | 0.39M | 4.63 |
+| Sonnet 5.5 | 0.09M | 14.4M | 1.11M | 6.77 |
+| Haiku 5.5 | 0.04M | 0.6M | 0.16M | 0.06 |
+| **total** | 0.19M | 15.9M | 1.66M | **11.46** |
+
+Per 1% of session (14%): about 1.27M tokens (Sonnet arm: 1.42M). The weekly change of 1 is too
+coarse to divide (0 to 2%).
+
+Sonnet vs Devin builder, Claude side only: est. API cost $15.01 vs $11.46 (-24%); session
++15 vs +14 points. The session meters are within rounding of each other, so on this evidence the
+Devin builder saved little Claude quota: the spec, planner and review workers dominate. Outcome
+differed: Devin arm merged 4 of 8 jobs, with 2 conflict holds, 1 secret-scan block and 1
+malformed output; the Sonnet arm was not graded. Single run each; treat as a direction.
 
 ## Known limits
 - Devin's tokens are not visible in Claude transcripts; the new arm's coding cost shows as time.
